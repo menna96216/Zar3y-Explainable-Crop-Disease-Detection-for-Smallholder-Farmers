@@ -1,0 +1,2 @@
+# Zar3y-Explainable-Crop-Disease-Detection-for-Smallholder-Farmers
+Zar3y ("My Crop") is an end-to-end AI solution designed to empower Egyptian smallholder farmers in the Nile Delta and Upper Egypt. By leveraging computer vision, the system provides immediate diagnosis of crop diseases—such as those affecting tomatoes, potatoes, peppers, and corn—mitigating the heavy losses caused by delayed expert intervention.
