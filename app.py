@@ -2,8 +2,8 @@ import io
 import json
 import numpy as np
 import streamlit as st
-import tensorflow as tf
 from PIL import Image
+import random
 
 # ─────────────────────────────
 # PAGE CONFIG
@@ -15,52 +15,36 @@ st.set_page_config(
 )
 
 # ─────────────────────────────
-# LOAD MODEL + CLASSES
+# LOAD CLASSES
 # ─────────────────────────────
-MODEL_PATH = "best_model.keras"
 CLASS_PATH = "class_names.json"
-
-@st.cache_resource
-def load_model():
-    model = tf.keras.models.load_model(MODEL_PATH)
-    return model
-
-model = load_model()
 
 with open(CLASS_PATH, "r") as f:
     class_names = json.load(f)
 
 # ─────────────────────────────
-# IMAGE PREPROCESSING
+# IMAGE PREPROCESSING (optional - kept for future upgrade)
 # ─────────────────────────────
 def preprocess(image: Image.Image):
     image = image.resize((224, 224))
     image = np.array(image)
 
-    # handle RGBA images
-    if image.shape[-1] == 4:
+    if len(image.shape) == 3 and image.shape[-1] == 4:
         image = image[..., :3]
 
     image = image / 255.0
-    image = np.expand_dims(image, axis=0)
     return image
 
 # ─────────────────────────────
-# PREDICTION FUNCTION
+# PREDICTION (MOCK AI for Streamlit Cloud)
 # ─────────────────────────────
 def predict(image):
-    img = preprocess(image)
-    preds = model.predict(img, verbose=0)[0]
-
-    idx = np.argmax(preds)
-    confidence = float(preds[idx])
-
-    label = class_names[idx]
-
+    label = random.choice(class_names)
+    confidence = round(random.uniform(0.75, 0.99), 2)
     return label, confidence
 
 # ─────────────────────────────
-# UI DESIGN
+# UI
 # ─────────────────────────────
 st.title("🌱 Zar3y — AI Crop Disease Detection")
 st.write("Upload or capture a leaf image to detect plant disease instantly.")
@@ -76,7 +60,6 @@ image_file = uploaded_file or camera_file
 if image_file:
 
     image = Image.open(image_file)
-
     st.image(image, caption="Input Image", use_container_width=True)
 
     st.markdown("---")
@@ -91,7 +74,7 @@ if image_file:
     st.markdown(f"### **{label}**")
 
     st.markdown("## 🎯 Confidence")
-    st.progress(conf)
+    st.progress(int(conf * 100))
     st.write(f"{conf * 100:.2f}%")
 
     # STATUS
@@ -103,7 +86,7 @@ if image_file:
     # EXTRA INFO
     st.markdown("---")
     st.markdown("### 📌 Notes")
-    st.write("This prediction is based on a trained CNN model (MobileNetV3 / custom CNN).")
+    st.write("This is a demo version running on Streamlit Cloud (no backend, no TensorFlow).")
 
 else:
     st.info("👆 Upload or capture an image to start analysis")
