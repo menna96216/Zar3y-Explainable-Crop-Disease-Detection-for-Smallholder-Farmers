@@ -1,4 +1,9 @@
+fastapi
+uvicorn
 streamlit
-numpy
+requests
 pillow
-tflite-runtime
+numpy
+opencv-python
+tensorflow
+python-multipart
