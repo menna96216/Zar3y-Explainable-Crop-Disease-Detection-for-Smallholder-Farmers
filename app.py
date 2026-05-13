@@ -2,12 +2,11 @@ import io
 import json
 import numpy as np
 import streamlit as st
+import tensorflow as tf
 from PIL import Image
-import random
-import time
 
 # ─────────────────────────────
-# PAGE CONFIG
+# CONFIG
 # ─────────────────────────────
 st.set_page_config(
     page_title="Zar3y AI Studio",
@@ -16,65 +15,60 @@ st.set_page_config(
 )
 
 # ─────────────────────────────
-# LOAD CLASSES
+# LOAD MODEL
 # ─────────────────────────────
+@st.cache_resource
+def load_model():
+    return tf.keras.models.load_model("best_model.keras")
+
+model = load_model()
+
 with open("class_names.json", "r") as f:
     class_names = json.load(f)
 
 # ─────────────────────────────
-# SESSION STATE (history)
+# PREPROCESS
 # ─────────────────────────────
-if "history" not in st.session_state:
-    st.session_state.history = []
+def preprocess(img):
+    img = img.resize((224, 224))
+    img = np.array(img)
+
+    if img.shape[-1] == 4:
+        img = img[..., :3]
+
+    img = img / 255.0
+    return np.expand_dims(img, axis=0)
 
 # ─────────────────────────────
-# SMART PREDICTION ENGINE (Enhanced mock AI)
+# PREDICT (REAL AI)
 # ─────────────────────────────
-def predict(image, class_name):
-    crop = class_name.split("_")[0] if "_" in class_name else "Unknown"
+def predict(image):
+    img = preprocess(image)
+    preds = model.predict(img, verbose=0)[0]
 
-    disease_map = {
-        "Tomato": ["Early Blight", "Late Blight", "Leaf Mold"],
-        "Potato": ["Early Blight", "Late Blight"],
-        "Pepper": ["Bacterial Spot"],
-        "Corn": ["Common Rust"]
-    }
+    idx = np.argmax(preds)
+    confidence = float(preds[idx])
+    label = class_names[idx]
 
-    disease = random.choice(disease_map.get(crop, ["Healthy"]))
-
-    if "healthy" in class_name.lower():
-        label = f"{crop} — Healthy"
-        confidence = round(random.uniform(0.90, 0.99), 2)
-    else:
-        label = f"{crop} — {disease}"
-        confidence = round(random.uniform(0.75, 0.95), 2)
-
-    return label, confidence, crop, disease
+    return label, confidence
 
 # ─────────────────────────────
 # UI HEADER
 # ─────────────────────────────
 st.markdown("""
-    <h1 style='text-align:center; color:#4ADE80; font-size:42px;'>
-        🌱 Zar3y AI Studio
-    </h1>
-    <p style='text-align:center; color:#94A3B8;'>
-        Advanced Crop Disease Intelligence System
-    </p>
+<h1 style='text-align:center; color:#22c55e;'>🌱 Zar3y AI Studio</h1>
+<p style='text-align:center; color:#94a3b8;'>Real AI Crop Disease Detection</p>
 """, unsafe_allow_html=True)
 
 st.markdown("---")
 
 # ─────────────────────────────
-# UPLOAD
+# INPUT
 # ─────────────────────────────
 col1, col2 = st.columns(2)
 
-with col1:
-    uploaded_file = st.file_uploader("📤 Upload Leaf Image", type=["jpg","jpeg","png"])
-
-with col2:
-    camera_file = st.camera_input("📸 Capture Image")
+uploaded_file = col1.file_uploader("Upload Leaf Image", type=["jpg","png","jpeg"])
+camera_file = col2.camera_input("Or Capture Image")
 
 file = uploaded_file or camera_file
 
@@ -84,53 +78,29 @@ file = uploaded_file or camera_file
 if file:
 
     image = Image.open(file)
-    st.image(image, caption="Input Leaf", use_container_width=True)
+    st.image(image, caption="Input Image", use_container_width=True)
 
     st.markdown("---")
 
-    with st.spinner("🧠 AI analyzing plant health..."):
-        time.sleep(1.5)
-        class_name = random.choice(class_names)
-        label, conf, crop, disease = predict(image, class_name)
+    with st.spinner("🔍 Running AI Model..."):
+        label, conf = predict(image)
 
-    # Save history
-    st.session_state.history.append((label, conf))
+    # ───────── RESULT ─────────
+    st.markdown("## 🧠 Prediction Result")
 
-    # ─────────────────────────────
-    # RESULT UI (SaaS STYLE)
-    # ─────────────────────────────
-    st.markdown(f"""
-    <div style="padding:20px; border-radius:15px; background:#0f172a;">
-        <h2 style="color:#22c55e;">{label}</h2>
-        <p style="color:#94a3b8;">Crop Type: {crop}</p>
-        <p style="color:#fbbf24;">Confidence: {conf*100:.2f}%</p>
-    </div>
-    """, unsafe_allow_html=True)
-
+    st.success(f"**{label}**")
+    st.write(f"Confidence: {conf*100:.2f}%")
     st.progress(int(conf * 100))
 
-    # ─────────────────────────────
-    # AI EXPLANATION PANEL
-    # ─────────────────────────────
-    st.markdown("## 🔍 AI Explanation")
-
-    if "Healthy" in label:
-        st.success("Plant is healthy. No disease patterns detected.")
+    # ───────── STATUS ─────────
+    if "healthy" in label.lower():
+        st.success("🌿 Plant is HEALTHY")
     else:
-        st.warning(f"""
-        Detected disease patterns consistent with:
-        - {disease}
-        - Leaf discoloration
-        - Possible fungal/bacterial infection
-        """)
+        st.error("⚠️ Disease Detected")
 
-    # ─────────────────────────────
-    # HISTORY SECTION
-    # ─────────────────────────────
-    st.markdown("## 📊 Recent Predictions")
-
-    for item in reversed(st.session_state.history[-5:]):
-        st.write(f"🌱 {item[0]} — {item[1]*100:.1f}%")
+    # ───────── RAW DEBUG ─────────
+    st.markdown("### 🔬 Debug Info")
+    st.write("Raw Prediction:", label)
 
 else:
-    st.info("Upload or capture a leaf image to start analysis 🌿")
+    st.info("Upload or capture image to start analysis 🌱")
